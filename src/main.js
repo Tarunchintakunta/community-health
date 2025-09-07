@@ -15,6 +15,12 @@ import '@fortawesome/fontawesome-free/css/all.min.css'
 // Import custom CSS
 import './assets/css/main.css'
 
+// Initialize user from localStorage
+const savedUser = localStorage.getItem('currentUser')
+if (savedUser) {
+  store.commit('SET_USER', JSON.parse(savedUser))
+}
+
 createApp(App)
   .use(router)
   .use(store)
