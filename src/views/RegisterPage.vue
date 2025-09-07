@@ -108,6 +108,28 @@
                 </div>
               </div>
               
+              <!-- User Role - C2: Role-based Authentication -->
+              <div class="mb-3">
+                <label for="role" class="form-label">Account Type</label>
+                <select
+                  class="form-select"
+                  id="role"
+                  v-model="role"
+                  :class="{'is-invalid': errors.role}"
+                >
+                  <option value="">Select Account Type</option>
+                  <option value="user">User - Join programs and activities</option>
+                  <option value="coach">Coach - Create and manage programs</option>
+                  <option value="admin">Admin - Manage all programs and users</option>
+                </select>
+                <div v-if="errors.role" class="invalid-feedback">
+                  {{ errors.role }}
+                </div>
+                <div class="form-text">
+                  Choose your account type based on how you plan to use the platform.
+                </div>
+              </div>
+              
               <!-- Terms and Conditions - Validation Type 5: Required checkbox -->
               <div class="mb-3 form-check">
                 <input
@@ -157,6 +179,7 @@ export default {
     const password = ref('')
     const confirmPassword = ref('')
     const ageGroup = ref('')
+    const role = ref('')
     const agreeToTerms = ref(false)
     
     // Submission state
@@ -170,6 +193,7 @@ export default {
       password: '',
       confirmPassword: '',
       ageGroup: '',
+      role: '',
       agreeToTerms: ''
     })
     
@@ -226,6 +250,12 @@ export default {
         isValid = false
       }
       
+      // C2: Role validation
+      if (!role.value) {
+        errors.role = 'Please select an account type'
+        isValid = false
+      }
+      
       // Validation Type 6: Required checkbox
       if (!agreeToTerms.value) {
         errors.agreeToTerms = 'You must agree to the terms and conditions'
@@ -241,16 +271,35 @@ export default {
         isSubmitting.value = true
         
         try {
-          // B.2: Using store action to dynamically update data
-          await store.dispatch('registerUser', {
+          // C1: Create user with role-based authentication
+          const newUser = {
+            id: Date.now(),
             firstName: firstName.value,
             lastName: lastName.value,
             email: email.value,
-            ageGroup: ageGroup.value
-          })
+            password: password.value, // In real app, this would be hashed
+            ageGroup: ageGroup.value,
+            role: role.value,
+            registeredAt: new Date().toISOString()
+          }
           
-          // Redirect to account page
-          router.push('/account')
+          // Store user in localStorage
+          const users = JSON.parse(localStorage.getItem('users') || '[]')
+          users.push(newUser)
+          localStorage.setItem('users', JSON.stringify(users))
+          
+          // Auto-login after registration
+          localStorage.setItem('currentUser', JSON.stringify(newUser))
+          store.commit('SET_USER', newUser)
+          
+          // Redirect based on role
+          if (newUser.role === 'admin') {
+            router.push('/admin-panel')
+          } else if (newUser.role === 'coach') {
+            router.push('/coach-dashboard')
+          } else {
+            router.push('/account')
+          }
         } catch (error) {
           console.error('Registration error:', error)
         } finally {
@@ -266,6 +315,7 @@ export default {
       password,
       confirmPassword,
       ageGroup,
+      role,
       agreeToTerms,
       errors,
       isSubmitting,
