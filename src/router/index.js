@@ -36,6 +36,21 @@ const routes = [
     path: '/register',
     name: 'Register',
     component: () => import('../views/RegisterPage.vue')
+  },
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/LoginPage.vue')
+  },
+  {
+    path: '/coach-dashboard',
+    name: 'CoachDashboard',
+    component: () => import('../views/CoachDashboard.vue')
+  },
+  {
+    path: '/admin-panel',
+    name: 'AdminPanel',
+    component: () => import('../views/AdminPanel.vue')
   }
 ]
 
