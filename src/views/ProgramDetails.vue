@@ -93,6 +93,22 @@
               <p class="mb-2"><strong>Phone:</strong> (03) 1234 5678</p>
             </div>
           </div>
+          
+          <!-- C3: Rating System -->
+          <div class="card mt-4">
+            <div class="card-header">
+              <h5 class="card-title mb-0">
+                <i class="fas fa-star me-2"></i>Program Rating
+              </h5>
+            </div>
+            <div class="card-body">
+              <RatingSystem 
+                :program-id="program.id" 
+                @rating-updated="onRatingUpdated"
+                @rating-removed="onRatingRemoved"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -103,9 +119,13 @@
 import { computed, onMounted, watch } from 'vue'
 import { useStore } from 'vuex'
 import { useRoute } from 'vue-router'
+import RatingSystem from '@/components/RatingSystem.vue'
 
 export default {
   name: 'ProgramDetails',
+  components: {
+    RatingSystem
+  },
   setup() {
     const store = useStore()
     const route = useRoute()
@@ -129,9 +149,20 @@ export default {
       }
     })
     
+    // C3: Rating event handlers
+    const onRatingUpdated = (data) => {
+      console.log('Rating updated:', data)
+    }
+    
+    const onRatingRemoved = (data) => {
+      console.log('Rating removed:', data)
+    }
+    
     return {
       program,
-      loading
+      loading,
+      onRatingUpdated,
+      onRatingRemoved
     }
   }
 }
