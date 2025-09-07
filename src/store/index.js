@@ -6,7 +6,8 @@ export default createStore({
     programs: [],
     user: null,
     loading: false,
-    error: null
+    error: null,
+    ratings: {} // Store ratings in memory
   },
   mutations: {
     SET_PROGRAMS(state, programs) {
@@ -20,6 +21,13 @@ export default createStore({
     },
     SET_ERROR(state, error) {
       state.error = error
+    },
+    UPDATE_PROGRAM_RATING(state, { programId, averageRating, totalRatings }) {
+      const program = state.programs.find(p => p.id == programId)
+      if (program) {
+        program.averageRating = averageRating
+        program.totalRatings = totalRatings
+      }
     }
   },
   actions: {
@@ -112,6 +120,9 @@ export default createStore({
   getters: {
     getPrograms: state => state.programs,
     getProgram: state => id => {
+      return state.programs.find(program => program.id === parseInt(id))
+    },
+    getProgramById: state => id => {
       return state.programs.find(program => program.id === parseInt(id))
     },
     isLoading: state => state.loading,
