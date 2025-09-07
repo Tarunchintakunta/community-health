@@ -35,12 +35,48 @@
           </ul>
           
           <ul class="navbar-nav">
-            <li class="nav-item">
-              <router-link class="nav-link" to="/account">My Account</router-link>
-            </li>
-            <li class="nav-item">
-              <router-link class="btn btn-primary" to="/register">Sign Up</router-link>
-            </li>
+            <!-- Show only for logged-in users -->
+            <template v-if="currentUser">
+              <li class="nav-item">
+                <router-link class="nav-link" to="/account">
+                  <i class="fas fa-user me-1"></i>My Account
+                </router-link>
+              </li>
+              
+              <!-- Show only for coaches -->
+              <li v-if="currentUser.role === 'coach'" class="nav-item">
+                <router-link class="nav-link" to="/coach-dashboard">
+                  <i class="fas fa-chalkboard-teacher me-1"></i>Coach Dashboard
+                </router-link>
+              </li>
+              
+              <!-- Show only for admins -->
+              <li v-if="currentUser.role === 'admin'" class="nav-item">
+                <router-link class="nav-link" to="/admin-panel">
+                  <i class="fas fa-cog me-1"></i>Admin Panel
+                </router-link>
+              </li>
+              
+              <li class="nav-item">
+                <button @click="logout" class="btn btn-outline-danger btn-sm">
+                  <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+              </li>
+            </template>
+            
+            <!-- Show only for non-logged-in users -->
+            <template v-else>
+              <li class="nav-item">
+                <router-link class="nav-link" to="/login">
+                  <i class="fas fa-sign-in-alt me-1"></i>Login
+                </router-link>
+              </li>
+              <li class="nav-item">
+                <router-link class="btn btn-primary" to="/register">
+                  <i class="fas fa-user-plus me-1"></i>Sign Up
+                </router-link>
+              </li>
+            </template>
           </ul>
         </div>
       </div>
@@ -48,7 +84,22 @@
   </template>
   
   <script>
+  import { mapState } from 'vuex'
+  
   export default {
-    name: 'Navbar'
+    name: 'Navbar',
+    computed: {
+      ...mapState(['user']),
+      currentUser() {
+        return this.user || JSON.parse(localStorage.getItem('currentUser') || 'null')
+      }
+    },
+    methods: {
+      logout() {
+        localStorage.removeItem('currentUser')
+        this.$store.commit('SET_USER', null)
+        this.$router.push('/')
+      }
+    }
   }
   </script>
