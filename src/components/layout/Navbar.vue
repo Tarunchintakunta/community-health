@@ -42,6 +42,11 @@
                   <i class="fas fa-user me-1"></i>My Account
                 </router-link>
               </li>
+              <li class="nav-item">
+                <router-link class="nav-link" to="/security-test">
+                  <i class="fas fa-shield-alt me-1"></i>Security Test
+                </router-link>
+              </li>
               
               <!-- Show only for coaches -->
               <li v-if="currentUser.role === 'coach'" class="nav-item">
