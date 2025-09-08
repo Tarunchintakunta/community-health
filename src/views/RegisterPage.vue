@@ -165,6 +165,15 @@
 import { ref, reactive } from 'vue'
 import { useStore } from 'vuex'
 import { useRouter } from 'vue-router'
+import { 
+  sanitizeEmail, 
+  sanitizeName, 
+  sanitizeText, 
+  checkPasswordStrength, 
+  validateFormInput,
+  logSecurityEvent,
+  createRateLimiter
+} from '@/utils/security'
 
 export default {
   name: 'RegisterPage',
@@ -197,7 +206,10 @@ export default {
       agreeToTerms: ''
     })
     
-    // B.1: Implement validation for user inputs
+    // C4: Security - Rate limiting for registration attempts
+    const registrationRateLimiter = createRateLimiter(3, 300000) // 3 attempts per 5 minutes
+    
+    // C4: Security - Enhanced validation with sanitization
     const validateForm = () => {
       let isValid = true
       
@@ -206,35 +218,53 @@ export default {
         errors[key] = ''
       })
       
-      // Validation Type 1: Required fields
-      if (!firstName.value.trim()) {
-        errors.firstName = 'First name is required'
+      // C4: Security - Sanitize all inputs first
+      const sanitizedFirstName = sanitizeName(firstName.value)
+      const sanitizedLastName = sanitizeName(lastName.value)
+      const sanitizedEmail = sanitizeEmail(email.value)
+      
+      // Validation Type 1: Required fields with sanitization
+      const firstNameValidation = validateFormInput('First name', sanitizedFirstName, {
+        required: true,
+        minLength: 2,
+        maxLength: 50
+      })
+      
+      if (!firstNameValidation.isValid) {
+        errors.firstName = firstNameValidation.errors[0]
         isValid = false
       }
       
-      if (!lastName.value.trim()) {
-        errors.lastName = 'Last name is required'
+      const lastNameValidation = validateFormInput('Last name', sanitizedLastName, {
+        required: true,
+        minLength: 2,
+        maxLength: 50
+      })
+      
+      if (!lastNameValidation.isValid) {
+        errors.lastName = lastNameValidation.errors[0]
         isValid = false
       }
       
-      // Validation Type 2: Email format
-      if (!email.value.trim()) {
-        errors.email = 'Email is required'
-        isValid = false
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
-        errors.email = 'Invalid email format'
+      // Validation Type 2: Email format with sanitization
+      const emailValidation = validateFormInput('Email', sanitizedEmail, {
+        required: true,
+        type: 'email',
+        maxLength: 100
+      })
+      
+      if (!emailValidation.isValid) {
+        errors.email = emailValidation.errors[0]
         isValid = false
       }
       
-      // Validation Type 3: Password complexity
+      // C4: Security - Enhanced password validation
+      const passwordStrength = checkPasswordStrength(password.value)
       if (!password.value) {
         errors.password = 'Password is required'
         isValid = false
-      } else if (password.value.length < 8) {
-        errors.password = 'Password must be at least 8 characters long'
-        isValid = false
-      } else if (!/(?=.*\d)(?=.*[!@#$%^&*])/.test(password.value)) {
-        errors.password = 'Password must contain at least one number and one special character'
+      } else if (passwordStrength.score < 3) {
+        errors.password = `Password is too weak. ${passwordStrength.feedback.join(', ')}`
         isValid = false
       }
       
@@ -262,46 +292,93 @@ export default {
         isValid = false
       }
       
+      // C4: Security - Log validation attempts
+      if (!isValid) {
+        logSecurityEvent('FORM_VALIDATION_FAILED', {
+          form: 'registration',
+          errors: Object.keys(errors).filter(key => errors[key])
+        })
+      }
+      
       return isValid
     }
     
-    // Form submission handler
+    // C4: Security - Enhanced form submission with security measures
     const submitForm = async () => {
+      // C4: Security - Check rate limiting
+      const userKey = `registration_${email.value}`
+      if (!registrationRateLimiter(userKey)) {
+        errors.general = 'Too many registration attempts. Please try again in 5 minutes.'
+        logSecurityEvent('RATE_LIMIT_EXCEEDED', {
+          form: 'registration',
+          email: email.value
+        })
+        return
+      }
+      
       if (validateForm()) {
         isSubmitting.value = true
         
         try {
-          // C1: Create user with role-based authentication
-          const newUser = {
+          // C4: Security - Sanitize all user data before storage
+          const sanitizedUser = {
             id: Date.now(),
-            firstName: firstName.value,
-            lastName: lastName.value,
-            email: email.value,
+            firstName: sanitizeName(firstName.value),
+            lastName: sanitizeName(lastName.value),
+            email: sanitizeEmail(email.value),
             password: password.value, // In real app, this would be hashed
             ageGroup: ageGroup.value,
             role: role.value,
-            registeredAt: new Date().toISOString()
+            registeredAt: new Date().toISOString(),
+            // C4: Security - Add security metadata
+            securityMetadata: {
+              ipAddress: 'client-side', // In real app, get from server
+              userAgent: navigator.userAgent,
+              registrationSource: 'web-app'
+            }
+          }
+          
+          // C4: Security - Check for existing user
+          const users = JSON.parse(localStorage.getItem('users') || '[]')
+          const existingUser = users.find(u => u.email === sanitizedUser.email)
+          
+          if (existingUser) {
+            errors.email = 'An account with this email already exists'
+            logSecurityEvent('DUPLICATE_REGISTRATION_ATTEMPT', {
+              email: sanitizedUser.email
+            })
+            return
           }
           
           // Store user in localStorage
-          const users = JSON.parse(localStorage.getItem('users') || '[]')
-          users.push(newUser)
+          users.push(sanitizedUser)
           localStorage.setItem('users', JSON.stringify(users))
           
           // Auto-login after registration
-          localStorage.setItem('currentUser', JSON.stringify(newUser))
-          store.commit('SET_USER', newUser)
+          localStorage.setItem('currentUser', JSON.stringify(sanitizedUser))
+          store.commit('SET_USER', sanitizedUser)
+          
+          // C4: Security - Log successful registration
+          logSecurityEvent('USER_REGISTERED', {
+            userId: sanitizedUser.id,
+            role: sanitizedUser.role,
+            email: sanitizedUser.email
+          })
           
           // Redirect based on role
-          if (newUser.role === 'admin') {
+          if (sanitizedUser.role === 'admin') {
             router.push('/admin-panel')
-          } else if (newUser.role === 'coach') {
+          } else if (sanitizedUser.role === 'coach') {
             router.push('/coach-dashboard')
           } else {
             router.push('/account')
           }
         } catch (error) {
           console.error('Registration error:', error)
+          logSecurityEvent('REGISTRATION_ERROR', {
+            error: error.message,
+            email: email.value
+          })
         } finally {
           isSubmitting.value = false
         }

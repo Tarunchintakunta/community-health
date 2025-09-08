@@ -70,6 +70,12 @@
 
 <script>
 import { mapState } from 'vuex'
+import { 
+  sanitizeEmail, 
+  sanitizeText, 
+  logSecurityEvent,
+  createRateLimiter
+} from '@/utils/security'
 
 export default {
   name: 'LoginPage',
@@ -86,24 +92,41 @@ export default {
   computed: {
     ...mapState(['user'])
   },
+  data() {
+    return {
+      form: {
+        email: '',
+        password: ''
+      },
+      errors: {},
+      isLoading: false,
+      // C4: Security - Rate limiting for login attempts
+      loginRateLimiter: createRateLimiter(5, 300000) // 5 attempts per 5 minutes
+    }
+  },
   methods: {
+    // C4: Security - Enhanced field validation with sanitization
     validateField(field) {
       const value = this.form[field]
       
       switch (field) {
         case 'email':
-          if (!value) {
+          const sanitizedEmail = sanitizeEmail(value)
+          if (!sanitizedEmail) {
             this.errors.email = 'Email is required'
-          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
             this.errors.email = 'Please enter a valid email address'
           } else {
             delete this.errors.email
+            // Update form with sanitized value
+            this.form.email = sanitizedEmail
           }
           break
         case 'password':
-          if (!value) {
+          const sanitizedPassword = sanitizeText(value, 100)
+          if (!sanitizedPassword) {
             this.errors.password = 'Password is required'
-          } else if (value.length < 6) {
+          } else if (sanitizedPassword.length < 6) {
             this.errors.password = 'Password must be at least 6 characters'
           } else {
             delete this.errors.password
@@ -111,11 +134,27 @@ export default {
           break
       }
     },
+    
+    // C4: Security - Enhanced login with security measures
     async login() {
+      // C4: Security - Check rate limiting
+      const userKey = `login_${this.form.email}`
+      if (!this.loginRateLimiter(userKey)) {
+        this.errors.general = 'Too many login attempts. Please try again in 5 minutes.'
+        logSecurityEvent('LOGIN_RATE_LIMIT_EXCEEDED', {
+          email: this.form.email
+        })
+        return
+      }
+      
       // Validate all fields
       Object.keys(this.form).forEach(field => this.validateField(field))
       
       if (Object.keys(this.errors).length > 0) {
+        logSecurityEvent('LOGIN_VALIDATION_FAILED', {
+          email: this.form.email,
+          errors: Object.keys(this.errors)
+        })
         return
       }
       
@@ -125,13 +164,24 @@ export default {
         // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 1000))
         
+        // C4: Security - Sanitize inputs before checking
+        const sanitizedEmail = sanitizeEmail(this.form.email)
+        const sanitizedPassword = sanitizeText(this.form.password, 100)
+        
         // Check against localStorage users
         const users = JSON.parse(localStorage.getItem('users') || '[]')
         const user = users.find(u => 
-          u.email === this.form.email && u.password === this.form.password
+          u.email === sanitizedEmail && u.password === sanitizedPassword
         )
         
         if (user) {
+          // C4: Security - Log successful login
+          logSecurityEvent('USER_LOGIN_SUCCESS', {
+            userId: user.id,
+            email: user.email,
+            role: user.role
+          })
+          
           // Store current user in localStorage
           localStorage.setItem('currentUser', JSON.stringify(user))
           this.$store.commit('SET_USER', user)
@@ -145,9 +195,19 @@ export default {
             this.$router.push('/')
           }
         } else {
+          // C4: Security - Log failed login attempt
+          logSecurityEvent('USER_LOGIN_FAILED', {
+            email: sanitizedEmail,
+            reason: 'invalid_credentials'
+          })
           this.errors.general = 'Invalid email or password'
         }
       } catch (error) {
+        // C4: Security - Log login error
+        logSecurityEvent('LOGIN_ERROR', {
+          email: this.form.email,
+          error: error.message
+        })
         this.errors.general = 'Login failed. Please try again.'
       } finally {
         this.isLoading = false
