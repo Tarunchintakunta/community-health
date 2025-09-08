@@ -15,13 +15,13 @@
         <ol class="breadcrumb">
           <li class="breadcrumb-item"><router-link to="/">Home</router-link></li>
           <li class="breadcrumb-item"><router-link to="/programs">Programs</router-link></li>
-          <li class="breadcrumb-item active" aria-current="page">{{ program.title }}</li>
+          <li class="breadcrumb-item active" aria-current="page" v-sanitize="program.title"></li>
         </ol>
       </nav>
       
       <div class="row">
         <div class="col-lg-8">
-          <h1 class="mb-3">{{ program.title }}</h1>
+          <h1 class="mb-3" v-sanitize="program.title"></h1>
           
           <div class="card mb-4">
             <div class="card-body">
@@ -30,23 +30,23 @@
                 <tbody>
                   <tr>
                     <th scope="row">Location:</th>
-                    <td>{{ program.location }}</td>
+                    <td v-sanitize="program.location"></td>
                   </tr>
                   <tr>
                     <th scope="row">Address:</th>
-                    <td>{{ program.address }}</td>
+                    <td v-sanitize="program.address"></td>
                   </tr>
                   <tr>
                     <th scope="row">Schedule:</th>
-                    <td>{{ program.schedule }}</td>
+                    <td v-sanitize="program.schedule"></td>
                   </tr>
                   <tr>
                     <th scope="row">Age Group:</th>
-                    <td>{{ program.ageGroup }}</td>
+                    <td v-sanitize="program.ageGroup"></td>
                   </tr>
                   <tr>
                     <th scope="row">Coach:</th>
-                    <td>{{ program.coach }}</td>
+                    <td v-sanitize="program.coach"></td>
                   </tr>
                   <tr>
                     <th scope="row">Spaces Available:</th>
