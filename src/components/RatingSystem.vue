@@ -1,5 +1,5 @@
 <template>
-  <div class="rating-system">
+  <div class="rating-system" v-secure-form>
     <h4 class="mb-3">
       <i class="fas fa-star me-2"></i>Rate this Program
     </h4>
