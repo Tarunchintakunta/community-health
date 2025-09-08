@@ -51,6 +51,11 @@ const routes = [
     path: '/admin-panel',
     name: 'AdminPanel',
     component: () => import('../views/AdminPanel.vue')
+  },
+  {
+    path: '/security-test',
+    name: 'SecurityTest',
+    component: () => import('../components/SecurityTest.vue')
   }
 ]
 
