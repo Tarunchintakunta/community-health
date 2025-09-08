@@ -1,7 +1,9 @@
 // This file satisfies B.2 by dynamically fetching and displaying data
 import { createStore } from 'vuex'
+import { securityMiddleware } from './security'
 
 export default createStore({
+  plugins: [securityMiddleware],
   state: {
     programs: [],
     user: null,
